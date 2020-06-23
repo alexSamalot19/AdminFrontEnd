@@ -4,7 +4,8 @@ import Container from "./Container";
 import Footer from "./Footer";
 import { render } from "@testing-library/react";
 import { getAllStudents } from "./client.js";
-import { Table, Avatar, Spin, Icon, Modal } from "antd";
+import { Empty, Table, Avatar, Spin, Icon, Modal } from "antd";
+import { errorNotification } from "./Notification";
 import AddStudentForm from "./forms/AddStudentForm";
 
 class App extends Component {
@@ -26,19 +27,51 @@ class App extends Component {
     this.setState({
       isFetching: true
     });
-    getAllStudents().then(res =>
-      res.json().then(students => {
-        console.log(students);
+    getAllStudents()
+      .then(res =>
+        res.json().then(students => {
+          console.log(students);
+          this.setState({
+            students,
+            isFetching: false
+          });
+        })
+      )
+      .catch(error => {
+        const message = error.error.message;
+        const description = error.error.error;
+        errorNotification(message, description);
         this.setState({
-          students,
           isFetching: false
         });
-      })
-    );
+      });
   };
 
   render() {
     const { students, isFetching, isAddStudentModalVisible } = this.state;
+
+    const commonElements = () => (
+      <div>
+        <Modal
+          title="Add new student"
+          visible={isAddStudentModalVisible}
+          onOk={this.closeAddStudentModal}
+          onCancel={this.closeAddStudentModal}
+          width={1000}
+        >
+          <AddStudentForm
+            onSuccess={() => {
+              this.closeAddStudentModal();
+              this.fetchStudents();
+            }}
+          />
+        </Modal>
+        <Footer
+          handleAddStudentClickEvent={this.openAddStudentModal}
+          numberOfStudents={students.length}
+        ></Footer>
+      </div>
+    );
 
     if (isFetching) {
       return (
@@ -97,29 +130,17 @@ class App extends Component {
             pagination={false}
             rowKey="studentID"
           />
-          <Modal
-            title="Add new student"
-            visible={isAddStudentModalVisible}
-            onOk={this.closeAddStudentModal}
-            onCancel={this.closeAddStudentModal}
-            width={1000}
-          >
-            <AddStudentForm
-              onSuccess={() => {
-                this.closeAddStudentModal();
-                this.fetchStudents();
-              }}
-            />
-          </Modal>
-          <Footer
-            handleAddStudentClickEvent={this.openAddStudentModal}
-            numberOfStudents={students.length}
-          ></Footer>
+          {commonElements()}
         </Container>
       );
     }
 
-    return <h1>No Student Found</h1>;
+    return (
+      <Container>
+        <Empty description={<h1>No Students found</h1>} />
+        {commonElements()}
+      </Container>
+    );
   }
 }
 
